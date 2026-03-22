@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MAC地址地理位置查询</title>
+    <!-- 引入天地图 JS API -->
+    <script src="http://api.tianditu.gov.cn/api?v=4.0&tk={{ key }}" type="text/javascript"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .input-group input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .input-group input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+        }
+        .input-group button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .input-group button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .input-group button:active {
+            transform: scale(0.98);
+        }
+        .result {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: none;
+            border-left: 5px solid #667eea;
+        }
+        .result.show {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        .result h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .result p {
+            margin: 8px 0;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .result strong {
+            color: #667eea;
+        }
+        .error {
+            border-left-color: #e74c3c;
+        }
+        .map-container {
+            width: 100%;
+            height: 500px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background: #eee;
+            position: relative;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            background: #f1f1f1;
+            font-size: 12px;
+            color: #777;
+        }
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+            .map-container {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="header">
+        <h1>📍 MAC地址地理位置查询</h1>
+        <p>输入MAC地址，即可获取精确位置并在地图上展示</p>
+    </div>
+    <div class="content">
+        <div class="input-group">
+            <input type="text" id="macInput" placeholder="例如: 34:96:72:6a:7c:5e" autocomplete="off">
+            <button id="queryBtn">🔍 查询位置</button>
+        </div>
+        <div id="loading" class="loading">
+            <div>⏳ 正在查询，请稍候...</div>
+        </div>
+        <div id="result" class="result"></div>
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let map = null;
+    let marker = null;
+    let infoWindow = null;
+
+    // 初始化地图（等待页面加载完成）
+    window.onload = function() {
+        // 天地图初始化
+        map = new T.Map('map');
+        // 默认显示北京天安门
+        var defaultPoint = new T.LngLat(116.397428, 39.90923);
+        map.centerAndZoom(defaultPoint, 12);
+    };
+
+    // 更新地图位置
+    function updateMap(lon, lat, address) {
+        if (!map) {
+            console.error("地图未初始化");
+            return;
+        }
+        var point = new T.LngLat(parseFloat(lon), parseFloat(lat));
+        map.centerAndZoom(point, 15);
+        // 移除旧的标记
+        if (marker) {
+            map.removeOverLay(marker);
+        }
+        // 添加新标记
+        marker = new T.Marker(point);
+        map.addOverLay(marker);
+        // 添加信息窗口
+        if (infoWindow) {
+            map.closeInfoWindow();
+        }
+        infoWindow = new T.InfoWindow(`<strong>详细地址</strong><br/>${address}<br/><strong>坐标</strong><br/>经度: ${lon}<br/>纬度: ${lat}`);
+        map.openInfoWindow(infoWindow, point);
+    }
+
+    // 显示结果
+    function showResult(data) {
+        const resultDiv = document.getElementById('result');
+        if (data.success) {
+            resultDiv.className = 'result show';
+            resultDiv.innerHTML = `
+                <h3>✅ 查询成功</h3>
+                <p><strong>📍 详细地址:</strong> ${data.address}</p>
+                <p><strong>🗺️ 经度:</strong> ${data.lon} &nbsp;|&nbsp; <strong>纬度:</strong> ${data.lat}</p>
+                <p><strong>🎯 定位精度半径:</strong> ${data.radius} 米</p>
+            `;
+            // 更新地图
+            updateMap(data.lon, data.lat, data.address);
+        } else {
+            resultDiv.className = 'result show error';
+            resultDiv.innerHTML = `
+                <h3>❌ 查询失败</h3>
+                <p>${data.message || '未找到该MAC地址的位置信息，请检查MAC地址格式是否正确。'}</p>
+            `;
+            // 不清除地图，但可以提示
+        }
+    }
+
+    // 查询操作
+    async function queryMac() {
+        const mac = document.getElementById('macInput').value.trim();
+        if (!mac) {
+            alert('请输入MAC地址');
+            return;
+        }
+        // 简单验证MAC格式（可自行调整）
+        const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+        if (!macRegex.test(mac)) {
+            alert('MAC地址格式不正确，请使用类似 34:96:72:6a:7c:5e 的格式');
+            return;
+        }
+
+        // 显示加载动画
+        const loadingDiv = document.getElementById('loading');
+        const queryBtn = document.getElementById('queryBtn');
+        loadingDiv.style.display = 'block';
+        queryBtn.disabled = true;
+        queryBtn.textContent = '查询中...';
+
+        try {
+            const formData = new FormData();
+            formData.append('mac', mac);
+            const response = await fetch('/query', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            showResult(result);
+        } catch (err) {
+            console.error(err);
+            showResult({ success: false, message: '网络请求失败，请检查后端服务是否运行。' });
+        } finally {
+            loadingDiv.style.display = 'none';
+            queryBtn.disabled = false;
+            queryBtn.textContent = '🔍 查询位置';
+        }
+    }
+
+    // 绑定事件
+    document.getElementById('queryBtn').addEventListener('click', queryMac);
+    document.getElementById('macInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            queryMac();
+        }
+    });
+</script>
+</body>
+</html>
