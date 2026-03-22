@@ -10,8 +10,10 @@ app = FastAPI(title="MAC地址地理位置查询")
 # 配置模板目录
 templates = Jinja2Templates(directory="templates")
 
-# 天地图 API Key（请替换为你的 Key）
-TIANDITU_KEY = "your_api_key_here"
+# 高德地图 API Key（请替换为你的 Key）
+AMAP_KEY = "your_api_key_here"
+# 高德地图安全密钥（请替换为你的安全密钥）
+AMAP_SECURITY_CODE = "your_security_jscode_here"
 
 # 外部 WiFi 位置查询 API
 LOCATION_API = "http://api.cellocation.com:84/wifi/"
@@ -19,7 +21,7 @@ LOCATION_API = "http://api.cellocation.com:84/wifi/"
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """返回前端页面"""
-    return templates.TemplateResponse("index.html", {"request": request, "key": TIANDITU_KEY})
+    return templates.TemplateResponse("index.html", {"request": request, "key": AMAP_KEY, "security_code": AMAP_SECURITY_CODE})
 
 @app.post("/query")
 async def query_mac(mac: str = Form(...)):
@@ -27,7 +29,7 @@ async def query_mac(mac: str = Form(...)):
     接收 MAC 地址，调用外部 API 查询位置，返回 JSON 数据
     """
     try:
-        resp = requests.get(LOCATION_API, params={"mac": mac, "output": "json"}, timeout=10)
+        resp = requests.get(LOCATION_API, params={"mac": mac, "output": "json", "coord": "gcj02"}, timeout=10)
         data = resp.json()
     except Exception as e:
         return {"error": f"请求外部 API 失败: {str(e)}"}
