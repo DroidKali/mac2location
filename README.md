@@ -19,7 +19,7 @@
 - FastAPI
 - Click
 - Jinja2
-- 天地图 API
+- 高德地图 API
 
 ## 安装
 
@@ -59,42 +59,56 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 访问 http://localhost:8000 即可使用 Web 界面进行查询。
 
-#### 天地图 API 申请配置
+## 高德地图 API 申请配置
 
-Web 服务使用天地图 API 进行地图展示，首次使用需要申请 API Key。
+Web 服务使用高德地图 API 进行地图展示，首次使用需要申请 API Key 和安全密钥。
 
-#### 申请步骤
+### 申请步骤
 
 1. **注册账号**
 
-   访问 [天地图官网](https://www.tianditu.gov.cn/)，点击右上角"注册"。
-   
-   > 注意：请在全国天地图官网注册，不要在各省分站注册，数据不同步。
+   访问 [高德开放平台](https://lbs.amap.com/)，点击右上角"注册"。
 
-2. **申请成为开发者**
+2. **实名认证**
 
-   登录后，点击首页菜单的"开发资源" → 进入"控制台" → 选择"申请成为个人开发者"，填写资料后提交。
+   登录后，进入控制台完成个人/企业实名认证。
 
-3. **创建应用获取 Key**
+3. **创建应用**
 
-   在控制台左侧菜单找到"我的应用" → 点击"创建新应用"：
+   进入控制台 → 应用管理 → 我的应用 → 点击"创建新应用"：
    
    | 字段 | 填写说明 |
    |------|----------|
    | 应用名称 | 自定义，如 "MAC地址查询" |
-   | 行业类别 | 根据实际情况选择 |
-   | 应用类型 | 选择 **浏览器端** |
-   | IP白名单 | 可留空 |
+   | 应用类型 | 根据实际情况选择 |
 
-   创建成功后，页面显示的 Key 即为 API 密钥。
+4. **添加 Key**
 
-#### 配置 Key
+   在创建的应用下点击"添加 Key"：
+   
+   | 字段 | 填写说明 |
+   |------|----------|
+   | Key 名称 | 自定义，如 "Web端" |
+   | 服务平台 | 选择 **Web端(JS API)** |
+   | 域名白名单 | 可填 `*` 或指定域名 |
 
-将获取的 Key 填入 `main.py` 中的 `TIANDITU_KEY` 变量：
+   创建成功后，页面显示的 **Key** 和 **安全密钥** 即为所需配置。
+
+### 配置 Key
+
+将获取的 Key 和安全密钥填入 `main.py` 中：
 
 ```python
-TIANDITU_KEY = "your_api_key_here"
+# 高德地图 API Key
+AMAP_KEY = "your_api_key_here"
+# 高德地图安全密钥
+AMAP_SECURITY_CODE = "your_security_jscode_here"
 ```
+
+### 官方文档
+
+- [高德地图 JS API 2.0 概述](https://lbs.amap.com/api/javascript-api-v2/summary)
+- [安全密钥使用说明](https://lbs.amap.com/api/javascript-api-v2/guide/abc/jscode)
 
 ## API 接口
 
